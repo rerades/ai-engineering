@@ -8,7 +8,7 @@ from app.services.llm_service import generate_estimation
 
 MIN_TRANSCRIPTION_LENGTH = 1
 
-router = APIRouter(prefix="/api/v1", tags=["estimations"])
+router = APIRouter(tags=["estimations"])
 
 
 class EstimationRequest(BaseModel):
