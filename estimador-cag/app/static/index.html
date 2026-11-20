@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Estimador CAG</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 860px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+    textarea { width: 100%; min-height: 14rem; font: inherit; padding: .6rem; box-sizing: border-box; }
+    button { margin-top: .6rem; padding: .6rem 1.2rem; font: inherit; cursor: pointer; }
+    button:disabled { cursor: wait; opacity: .6; }
+    #meta { color: #666; font-size: .9rem; margin: 1rem 0 .4rem; }
+    #result { background: #f6f6f6; padding: 0 1rem; border-radius: 6px; overflow-x: auto; }
+    #result table { border-collapse: collapse; }
+    #result th, #result td { border: 1px solid #ccc; padding: .3rem .6rem; }
+    #result:empty { display: none; }
+    .error { color: #b00020; }
+  </style>
+</head>
+<body>
+  <h1>Estimador CAG</h1>
+  <form id="form">
+    <label for="transcription">Transcripción de la reunión</label>
+    <textarea id="transcription" required placeholder="El cliente necesita una landing page con formulario..."></textarea>
+    <button id="submit" type="submit">Estimar</button>
+  </form>
+  <p id="meta" role="status"></p>
+  <div id="result"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+  <script>
+    const ENDPOINT = "/api/v1/estimate";
+    const COST_DECIMALS = 6;
+
+    const form = document.getElementById("form");
+    const button = document.getElementById("submit");
+    const meta = document.getElementById("meta");
+    const result = document.getElementById("result");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      button.disabled = true;
+      meta.className = "";
+      meta.textContent = "Generando estimación…";
+      result.textContent = "";
+      try {
+        const response = await fetch(ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transcription: document.getElementById("transcription").value }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail));
+        const cost = data.cost_usd == null ? "n/d" : `$${data.cost_usd.toFixed(COST_DECIMALS)}`;
+        meta.textContent = `${data.model} · ${data.provider} · ${data.input_tokens} in / ${data.output_tokens} out · ${cost}`;
+        result.innerHTML = DOMPurify.sanitize(marked.parse(data.estimation));
+      } catch (error) {
+        meta.className = "error";
+        meta.textContent = `Error: ${error.message}`;
+      } finally {
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
