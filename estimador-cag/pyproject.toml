@@ -1,0 +1,13 @@
+[project]
+name = "estimador-cag"
+version = "0.1.0"
+description = "Estimador de presupuestos de software con CAG (FastAPI + LLM)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.165.0",
+    "openai>=3.57.0",
+    "pydantic-settings>=2.16.3",
+    "python-dotenv>=1.2.4",
+    "uvicorn[standard]>=0.54.0",
+]
