@@ -1,7 +1,8 @@
+from collections.abc import AsyncIterator
 from functools import lru_cache
 
 from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletion
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
 from app.config import get_settings
 from app.context.examples import ESTIMATION_EXAMPLES
@@ -35,17 +36,33 @@ def _client() -> AsyncOpenAI:
     return AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
 
 
-async def generate_estimation(transcript: str) -> ChatCompletion:
+def _completion_params(transcript: str) -> dict:
     settings = get_settings()
     if settings.llm_provider != "openai":
         raise NotImplementedError(f"Proveedor no implementado: {settings.llm_provider}")
-
-    return await _client().chat.completions.create(
-        model=settings.llm_model,
-        messages=[
+    return {
+        "model": settings.llm_model,
+        "messages": [
             {"role": "system", "content": build_system_prompt()},
             {"role": "user", "content": transcript},
         ],
-        temperature=TEMPERATURE,
-        max_tokens=MAX_OUTPUT_TOKENS,
+        "temperature": TEMPERATURE,
+        "max_tokens": MAX_OUTPUT_TOKENS,
+    }
+
+
+async def generate_estimation(transcript: str) -> ChatCompletion:
+    return await _client().chat.completions.create(**_completion_params(transcript))
+
+
+async def stream_estimation(transcript: str) -> AsyncIterator[ChatCompletionChunk]:
+    """Misma llamada que generate_estimation, pero en streaming.
+
+    Devuelve los chunks tal cual: el texto va en choices[0].delta.content y el último
+    chunk (sin choices) trae el usage, gracias a include_usage.
+    """
+    stream = await _client().chat.completions.create(
+        **_completion_params(transcript), stream=True, stream_options={"include_usage": True}
     )
+    async for chunk in stream:
+        yield chunk

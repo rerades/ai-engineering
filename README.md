@@ -19,6 +19,7 @@ Usa **CAG** (Cache-Augmented Generation): las estimaciones previas de `app/conte
 | `app/routers/estimations.py` | `POST /api/v1/estimate` y los schemas de entrada y salida |
 | `app/services/llm_service.py` | Monta el system prompt con los ejemplos y llama al LLM |
 | `app/context/examples.py` | Tres estimaciones históricas (ficticias) |
+| `streamlit_app.py` | Chat Streamlit que reutiliza `generate_estimation` (mismo system prompt) |
 
 ## Puesta en marcha
 
@@ -36,6 +37,26 @@ curl -X POST http://localhost:8000/api/v1/estimate \
 ```
 
 La respuesta incluye `estimation`, `model`, `provider`, `input_tokens`, `output_tokens`, `cost_usd` (lo que cobra OpenRouter de verdad) y `created_at`. Swagger está en `/docs`.
+
+### Chat Streamlit
+
+```bash
+uv run streamlit run streamlit_app.py    # http://localhost:8501, lee la misma .env
+```
+
+Pega la transcripción en el chat: la estimación se va escribiendo en streaming (`st.write_stream` sobre `stream_estimation`) como mensaje del asistente, y el historial se mantiene mientras dure la sesión (`st.session_state`).
+
+El panel lateral enseña el contexto CAG: el system prompt (solo lectura), las estimaciones de ejemplo que se inyectan, el prompt completo tal como se envía y las métricas de la última llamada (modelo, tokens de entrada y salida, tiempo de respuesta y del primer token). Los tokens llegan en el último chunk del stream gracias a `stream_options={"include_usage": True}`.
+
+Con `.streamlit/config.toml` (`runOnSave`) y `watchdog`, la app se recarga sola al guardar, también los cambios en `app/`. Los cambios en `.env` sí requieren reiniciar.
+
+| ✓ | Verificación (sesión 03) | Resultado |
+|---|---|---|
+| ✅ | `streamlit run streamlit_app.py` abre una interfaz de chat | http://localhost:8501 |
+| ✅ | Pegar una transcripción devuelve una estimación | Probado con `fixtures/transcripcion-01.md` y `-02.md` |
+| ✅ | La conversación persiste (varias preguntas seguidas) | Historial `user, assistant, user, assistant` |
+| ✅ | La respuesta llega en streaming | Primer token en ~1 s, respuesta completa en 5–7 s |
+| ✅ | La API key sale de `.env`, no del código | `Settings` (pydantic-settings) lee `OPENAI_API_KEY` |
 
 ## Checklist de verificación
 
