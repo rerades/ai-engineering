@@ -19,6 +19,7 @@ Usa **CAG** (Cache-Augmented Generation): las estimaciones previas de `app/conte
 | `app/routers/estimations.py` | `POST /api/v1/estimate` y los schemas de entrada y salida |
 | `app/services/llm_service.py` | Monta el system prompt con los ejemplos y llama al LLM |
 | `app/context/examples.py` | Tres estimaciones históricas (ficticias) |
+| `streamlit_app.py` | Chat Streamlit que reutiliza `generate_estimation` (mismo system prompt) |
 
 ## Puesta en marcha
 
@@ -36,6 +37,14 @@ curl -X POST http://localhost:8000/api/v1/estimate \
 ```
 
 La respuesta incluye `estimation`, `model`, `provider`, `input_tokens`, `output_tokens`, `cost_usd` (lo que cobra OpenRouter de verdad) y `created_at`. Swagger está en `/docs`.
+
+### Chat Streamlit
+
+```bash
+uv run streamlit run streamlit_app.py    # http://localhost:8501, lee la misma .env
+```
+
+Pega la transcripción en el chat: la estimación aparece como mensaje del asistente y el historial se mantiene mientras dure la sesión (`st.session_state`).
 
 ## Checklist de verificación
 
