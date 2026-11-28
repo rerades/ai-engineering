@@ -46,6 +46,18 @@ uv run streamlit run streamlit_app.py    # http://localhost:8501, lee la misma .
 
 Pega la transcripción en el chat: la estimación se va escribiendo en streaming (`st.write_stream` sobre `stream_estimation`) como mensaje del asistente, y el historial se mantiene mientras dure la sesión (`st.session_state`).
 
+El panel lateral enseña el contexto CAG: el system prompt (solo lectura), las estimaciones de ejemplo que se inyectan, el prompt completo tal como se envía y las métricas de la última llamada (modelo, tokens de entrada y salida, tiempo de respuesta y del primer token). Los tokens llegan en el último chunk del stream gracias a `stream_options={"include_usage": True}`.
+
+Con `.streamlit/config.toml` (`runOnSave`) y `watchdog`, la app se recarga sola al guardar, también los cambios en `app/`. Los cambios en `.env` sí requieren reiniciar.
+
+| ✓ | Verificación (sesión 03) | Resultado |
+|---|---|---|
+| ✅ | `streamlit run streamlit_app.py` abre una interfaz de chat | http://localhost:8501 |
+| ✅ | Pegar una transcripción devuelve una estimación | Probado con `fixtures/transcripcion-01.md` y `-02.md` |
+| ✅ | La conversación persiste (varias preguntas seguidas) | Historial `user, assistant, user, assistant` |
+| ✅ | La respuesta llega en streaming | Primer token en ~1 s, respuesta completa en 5–7 s |
+| ✅ | La API key sale de `.env`, no del código | `Settings` (pydantic-settings) lee `OPENAI_API_KEY` |
+
 ## Checklist de verificación
 
 | | Comprobación | Cómo se ha verificado |

@@ -2,7 +2,7 @@ from collections.abc import AsyncIterator
 from functools import lru_cache
 
 from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletion
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
 from app.config import get_settings
 from app.context.examples import ESTIMATION_EXAMPLES
@@ -55,9 +55,14 @@ async def generate_estimation(transcript: str) -> ChatCompletion:
     return await _client().chat.completions.create(**_completion_params(transcript))
 
 
-async def stream_estimation(transcript: str) -> AsyncIterator[str]:
-    """Misma llamada que generate_estimation, pero devuelve el texto trozo a trozo."""
-    stream = await _client().chat.completions.create(**_completion_params(transcript), stream=True)
+async def stream_estimation(transcript: str) -> AsyncIterator[ChatCompletionChunk]:
+    """Misma llamada que generate_estimation, pero en streaming.
+
+    Devuelve los chunks tal cual: el texto va en choices[0].delta.content y el último
+    chunk (sin choices) trae el usage, gracias a include_usage.
+    """
+    stream = await _client().chat.completions.create(
+        **_completion_params(transcript), stream=True, stream_options={"include_usage": True}
+    )
     async for chunk in stream:
-        if chunk.choices and chunk.choices[0].delta.content:
-            yield chunk.choices[0].delta.content
+        yield chunk
