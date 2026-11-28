@@ -1,0 +1,2 @@
+[server]
+runOnSave = true  # recarga la app (y los módulos de app/) al guardar

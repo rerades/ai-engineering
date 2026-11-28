@@ -6,10 +6,11 @@ La API key se lee de .env (o del entorno) igual que la API FastAPI.
 
 import asyncio
 import threading
+from collections.abc import Iterator
 
 import streamlit as st
 
-from app.services.llm_service import generate_estimation
+from app.services.llm_service import stream_estimation
 
 
 @st.cache_resource
@@ -21,9 +22,18 @@ def _event_loop() -> asyncio.AbstractEventLoop:
     return loop
 
 
-def estimate(transcript: str) -> str:
-    future = asyncio.run_coroutine_threadsafe(generate_estimation(transcript), _event_loop())
-    return future.result().choices[0].message.content
+def estimate_stream(transcript: str) -> Iterator[str]:
+    """Puente síncrono para st.write_stream: saca cada trozo del generador async en el loop de fondo."""
+    loop = _event_loop()
+    chunks = stream_estimation(transcript)
+    try:
+        while True:
+            try:
+                yield asyncio.run_coroutine_threadsafe(anext(chunks), loop).result()
+            except StopAsyncIteration:
+                return
+    finally:
+        asyncio.run_coroutine_threadsafe(chunks.aclose(), loop).result()
 
 
 st.set_page_config(page_title="Estimador CAG", page_icon="📋")
@@ -37,17 +47,15 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if transcript := st.chat_input("Escribe o pega la transcripción de la reunión…"):
+if transcript := st.chat_input("Escribe o pega la transcripción de la reunión…", submit_mode="disable"):
     st.session_state.messages.append({"role": "user", "content": transcript})
     with st.chat_message("user"):
         st.markdown(transcript)
 
     with st.chat_message("assistant"):
         try:
-            with st.spinner("Estimando…"):
-                estimation = estimate(transcript)
+            estimation = st.write_stream(estimate_stream(transcript))
         except Exception as exc:
             st.error(f"Error llamando al LLM: {exc}")
         else:
-            st.markdown(estimation)
             st.session_state.messages.append({"role": "assistant", "content": estimation})

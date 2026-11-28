@@ -44,7 +44,7 @@ La respuesta incluye `estimation`, `model`, `provider`, `input_tokens`, `output_
 uv run streamlit run streamlit_app.py    # http://localhost:8501, lee la misma .env
 ```
 
-Pega la transcripción en el chat: la estimación aparece como mensaje del asistente y el historial se mantiene mientras dure la sesión (`st.session_state`).
+Pega la transcripción en el chat: la estimación se va escribiendo en streaming (`st.write_stream` sobre `stream_estimation`) como mensaje del asistente, y el historial se mantiene mientras dure la sesión (`st.session_state`).
 
 ## Checklist de verificación
 

@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterator
 from functools import lru_cache
 
 from openai import AsyncOpenAI
@@ -35,17 +36,28 @@ def _client() -> AsyncOpenAI:
     return AsyncOpenAI(api_key=settings.openai_api_key, base_url=settings.openai_base_url)
 
 
-async def generate_estimation(transcript: str) -> ChatCompletion:
+def _completion_params(transcript: str) -> dict:
     settings = get_settings()
     if settings.llm_provider != "openai":
         raise NotImplementedError(f"Proveedor no implementado: {settings.llm_provider}")
-
-    return await _client().chat.completions.create(
-        model=settings.llm_model,
-        messages=[
+    return {
+        "model": settings.llm_model,
+        "messages": [
             {"role": "system", "content": build_system_prompt()},
             {"role": "user", "content": transcript},
         ],
-        temperature=TEMPERATURE,
-        max_tokens=MAX_OUTPUT_TOKENS,
-    )
+        "temperature": TEMPERATURE,
+        "max_tokens": MAX_OUTPUT_TOKENS,
+    }
+
+
+async def generate_estimation(transcript: str) -> ChatCompletion:
+    return await _client().chat.completions.create(**_completion_params(transcript))
+
+
+async def stream_estimation(transcript: str) -> AsyncIterator[str]:
+    """Misma llamada que generate_estimation, pero devuelve el texto trozo a trozo."""
+    stream = await _client().chat.completions.create(**_completion_params(transcript), stream=True)
+    async for chunk in stream:
+        if chunk.choices and chunk.choices[0].delta.content:
+            yield chunk.choices[0].delta.content
